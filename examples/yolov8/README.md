@@ -102,6 +102,36 @@ python yolov8.py --model_path <rknn_model> --target <TARGET_PLATFORM> --img_show
 
 
 
+
+### 5.1 RK3588 multi-stream video (9 streams) Python demo
+
+For RK3588 video multi-stream detection, this repo provides a **video scheduler + draw-box** demo:
+- one decode reader per stream
+- task queue + 3 NPU workers
+- optional worker/core binding (`NPU_CORE_0/1/2`)
+- real-time drawing and optional output video saving
+
+```shell
+cd python
+python yolov8_multi_stream.py \
+  --model_path <rknn_model> \
+  --video_sources /data/videos \
+  --streams 9 \
+  --workers 3 \
+  --frames_per_stream 300 \
+  --bind_cores \
+  --save_dir ./result_video
+```
+
+`--video_sources` supports:
+- a directory containing `.mp4/.avi/.mov/.mkv` files
+- or comma-separated video paths
+
+Engineering recommendation:
+- keep `workers=3` on RK3588;
+- benchmark both `--bind_cores` and no-bind modes on device;
+- if input FPS is high, use the current “latest-frame” strategy to reduce queue latency.
+
 ## 6. Android Demo
 
 **Note: RK1808, RV1109, RV1126 does not support Android.**
