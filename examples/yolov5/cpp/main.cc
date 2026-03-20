@@ -25,23 +25,64 @@
 #include "file_utils.h"
 #include "image_drawing.h"
 
-#if defined(RV1106_1103) 
+#if defined(RV1106_1103)
     #include "dma_alloc.hpp"
 #endif
+
+static image_format_t parse_image_format(const char *format_name)
+{
+    if (strcmp(format_name, "rgb888") == 0)
+    {
+        return IMAGE_FORMAT_RGB888;
+    }
+    if (strcmp(format_name, "rgba8888") == 0)
+    {
+        return IMAGE_FORMAT_RGBA8888;
+    }
+    if (strcmp(format_name, "gray8") == 0)
+    {
+        return IMAGE_FORMAT_GRAY8;
+    }
+    if (strcmp(format_name, "nv12") == 0)
+    {
+        return IMAGE_FORMAT_YUV420SP_NV12;
+    }
+    if (strcmp(format_name, "nv21") == 0)
+    {
+        return IMAGE_FORMAT_YUV420SP_NV21;
+    }
+    return (image_format_t)-1;
+}
 
 /*-------------------------------------------
                   Main Function
 -------------------------------------------*/
 int main(int argc, char **argv)
 {
-    if (argc != 3)
+    if (argc != 3 && argc != 6)
     {
         printf("%s <model_path> <image_path>\n", argv[0]);
+        printf("%s <model_path> <image_path> <width> <height> <format(nv12/nv21/rgb888/rgba8888/gray8)>\n", argv[0]);
         return -1;
     }
 
     const char *model_path = argv[1];
     const char *image_path = argv[2];
+    int raw_width = 0;
+    int raw_height = 0;
+    image_format_t raw_format = (image_format_t)-1;
+
+    if (argc == 6)
+    {
+        raw_width = atoi(argv[3]);
+        raw_height = atoi(argv[4]);
+        raw_format = parse_image_format(argv[5]);
+        if (raw_width <= 0 || raw_height <= 0 || raw_format == (image_format_t)-1)
+        {
+            printf("invalid raw image args, width=%d height=%d format=%s\n", raw_width, raw_height, argv[5]);
+            return -1;
+        }
+    }
 
     int ret;
     rknn_app_context_t rknn_app_ctx;
@@ -58,11 +99,18 @@ int main(int argc, char **argv)
 
     image_buffer_t src_image;
     memset(&src_image, 0, sizeof(image_buffer_t));
-    ret = read_image(image_path, &src_image);
+    if (argc == 6)
+    {
+        ret = read_image_with_info(image_path, &src_image, raw_width, raw_height, raw_format);
+    }
+    else
+    {
+        ret = read_image(image_path, &src_image);
+    }
 
-#if defined(RV1106_1103) 
+#if defined(RV1106_1103)
     //RV1106 rga requires that input and output bufs are memory allocated by dma
-    ret = dma_buf_alloc(RV1106_CMA_HEAP_PATH, src_image.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd, 
+    ret = dma_buf_alloc(RV1106_CMA_HEAP_PATH, src_image.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd,
                        (void **) & (rknn_app_ctx.img_dma_buf.dma_buf_virt_addr));
     memcpy(rknn_app_ctx.img_dma_buf.dma_buf_virt_addr, src_image.virt_addr, src_image.size);
     dma_sync_cpu_to_device(rknn_app_ctx.img_dma_buf.dma_buf_fd);
@@ -120,8 +168,8 @@ out:
 
     if (src_image.virt_addr != NULL)
     {
-#if defined(RV1106_1103) 
-        dma_buf_free(rknn_app_ctx.img_dma_buf.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd, 
+#if defined(RV1106_1103)
+        dma_buf_free(rknn_app_ctx.img_dma_buf.size, &rknn_app_ctx.img_dma_buf.dma_buf_fd,
                 rknn_app_ctx.img_dma_buf.dma_buf_virt_addr);
 #else
         free(src_image.virt_addr);

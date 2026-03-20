@@ -148,7 +148,13 @@ cd /data/rknn_yolov5_demo
 
 export LD_LIBRARY_PATH=./lib
 ./rknn_yolov5_demo model/yolov5.rknn model/bus.jpg
+
+# Raw NV12/NV21/RGB888 input is also supported when width/height/format are provided.
+./rknn_yolov5_demo model/yolov5.rknn model/video11_1080p_nv12.yuv 1920 1080 nv12
 ```
+
+- Raw input format values supported by the C++ demo are `nv12`, `nv21`, `rgb888`, `rgba8888`, and `gray8`. For raw input files, the file size must exactly match the provided width/height/format combination.
+- For NV12/NV21 preprocessing, the demo relies on the existing image conversion path in `utils/image_utils.c`; on platforms where RGA is unavailable or the frame width is not aligned for the current build target, raw YUV preprocessing may still fail and should be converted to RGB888 first.
 
 - After running, the result was saved as `out.png`. To check the result on host PC, pull back result referring to the following command: 
 
