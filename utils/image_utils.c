@@ -259,6 +259,37 @@ int read_image(const char* path, image_buffer_t* image)
     }
 }
 
+int read_image_with_info(const char* path, image_buffer_t* image, int width, int height, image_format_t format)
+{
+    int ret = read_image_raw(path, image);
+    int expected_size;
+
+    if (ret != 0) {
+        return ret;
+    }
+
+    if (width <= 0 || height <= 0) {
+        printf("invalid raw image size width=%d height=%d\n", width, height);
+        return -1;
+    }
+
+    image->width = width;
+    image->height = height;
+    image->width_stride = width;
+    image->height_stride = height;
+    image->format = format;
+    expected_size = get_image_size(image);
+    if (expected_size <= 0) {
+        printf("invalid raw image format %d\n", format);
+        return -1;
+    }
+    if (image->size != expected_size) {
+        printf("raw image size mismatch, path=%s size=%d expected=%d\n", path, image->size, expected_size);
+        return -1;
+    }
+    return 0;
+}
+
 int write_image(const char* path, const image_buffer_t* img)
 {
     int ret;
